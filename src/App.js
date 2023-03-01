@@ -15,12 +15,102 @@ import config from './config.json';
 
 function App() {
 
+
+  const [provider,setProvider] = useState(null)
+  const [account,setAccount] = useState(null)
+  //const [network,setNetwork] = useState(null)
+  const [escrow, setEscrow] = useState(null)
+  const [homes,setHomes] = useState([])
+  const [home,setHome] = useState({})
+  const [toggle,setToggle] = useState(false)
+
+  const loadBlockchainData = async() => {
+    //Provider - metamask
+    const provider = new ethers.providers.Web3Provider(window.ethereum)
+    setProvider(provider)
+    //Network - contract address (config file)
+    const network = await provider.getNetwork() 
+   // setNetwork(network)
+
+    /* console.log(config[network.chainId].escrow.address)
+    console.log(config[network.chainId].realEstateProperty.address)  */
+
+    const realEstate = new ethers.Contract(config[network.chainId].realEstateProperty.address,RealEstate,provider)
+    const totalSupply = await realEstate.totalSupply()
+
+    const escrow = new ethers.Contract(config[network.chainId].escrow.address,Escrow,provider)
+    setEscrow(escrow)
+    
+
+    const homes = []
+
+    for (var i=1;i<=totalSupply;i++) {
+
+      const url = await realEstate.tokenURI(i)
+      const data = await fetch(url)
+      const metadata = await data.json()
+      homes.push(metadata)
+
+    }
+
+    setHomes(homes)
+    console.log(homes)
+
+    window.ethereum.on('accountsChanged', async() => {
+      const accounts = await window.ethereum.request({method: 'eth_requestAccounts'})
+      const account =  ethers.utils.getAddress(accounts[0])
+      setAccount(account)
+    })
+   
+  }
+
+    useEffect (() => {
+      loadBlockchainData()
+    },[])
+  
+    const togglePop = (home) => {
+      setHome(home)
+      toggle ? setToggle(false) : setToggle(true)
+    }
+
+
   return (
     <div>
-
+      <Navigation account={account} setAccount = {setAccount}/>
+      <Search />
       <div className='cards__section'>
 
-        <h3>Welcome to Millow</h3>
+        <h3>Homes For You!</h3>
+        <div className='cards'>
+          {homes.map((home,index) => (
+
+                <div className='card' key = {index} onClick = {() => {togglePop(home)}}>
+                  <div className='card__image'>
+                    <img src = {home.image}
+                      alt = 'Home'/>
+                  </div>
+                  <div className='card__info'>
+                    <h2><strong>{home.attributes[0].value} ETH</strong></h2>
+                    <p>
+                      <strong>{home.attributes[2].value}</strong> beds |
+                      <strong>{home.attributes[3].value}</strong> baths |
+                      <strong>{home.attributes[4].value}</strong> sqft
+                    </p>
+                    <p>{home.address}</p>
+                  </div>
+                </div>
+
+              
+
+
+
+          ) )}
+          
+        </div>
+
+        {toggle && (
+                <Home home = {home} provider= {provider} account = {account} escrow = {escrow} togglePop = {togglePop}/>
+               )}
 
       </div>
 
