@@ -16,7 +16,6 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
-  
   "browserslist": {
     "production": [
       ">0.2%",
@@ -33,6 +32,7 @@
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "^4.0.0",
     "hardhat": "^2.22.3",
+    "mocha": "^10.4.0",
     "react-scripts": "^5.0.1"
   }
 }

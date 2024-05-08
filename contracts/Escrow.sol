@@ -134,6 +134,8 @@ contract Escrow {
     function transferProperty (
         uint256 _nftID
         ) public payable {
+
+        // Write Custom Error messages
         require(inspectionStatus[_nftID]);
         require(approval[_nftID][buyer[_nftID]]);
         require(approval[_nftID][seller]);

@@ -2,7 +2,7 @@ const { expect } = require('chai');
 const { ethers } = require('hardhat');
 
 const tokens = (n) => {
-    return ethers.utils.parseUnits(n.toString(), 'ether')
+    return ethers.parseUnits(n.toString(), 'ether')
 }
 
 describe('Escrow',() => {
@@ -14,30 +14,40 @@ describe('Escrow',() => {
 
         [buyer,seller,inspector,lender] = await ethers.getSigners()
         
-
+       // console.log('buyer',buyer)
         //deploy Real Estate Property Contract
         const realEstateProperty = await ethers.getContractFactory('RealEstateProperty')
         realEstate = await realEstateProperty.deploy()
+        realEstate.waitForDeployment();
+        //console.log(await realEstate.getAddress())
 
 
         //Mint a property
         let transaction = await realEstate.connect(seller).mintProp("https://ipfs.io/ipfs/QmTudSYeM7mz3PkYEWXWqPjomRPHogcMFSq7XAvsvsgAPS")
-        await transaction.wait()
+        await transaction.wait();
+     //   console.log(transaction)
 
 
         //deploy Escrow contract
+        // console.log(await realEstate.getAddress());
+        // console.log(seller.address);
+        // console.log(inspector.address);
+        // console.log(lender.address);
+
         const Escrow = await ethers.getContractFactory('Escrow')
         escrow = await Escrow.deploy(
-            realEstate.address,
+           await realEstate.getAddress(),
             seller.address,
             inspector.address,
             lender.address
-        )
+        );
+        escrow.waitForDeployment();
+       // console.log(await escrow.getAddress())
         
        //Approve Property 
        //Every ERC721 token has inbuilt approve function which can be called to approve the transfer of ownership of the NFT
-
-       transaction = await realEstate.connect(seller).approve(escrow.address,1);
+        let EscrowContract = await escrow.getAddress();
+       transaction = await realEstate.connect(seller).approve(EscrowContract,1);
        await transaction.wait();
 
         //Call the list function in Escrow as seller
@@ -47,12 +57,14 @@ describe('Escrow',() => {
 
     })
 
+    
+
     describe('check Users', () => {
 
 
         it('returns NFT Address', async() => {
             let result = await escrow.nftAddress()
-            expect(result).to.be.equal(realEstate.address)
+            expect(result).to.be.equal(await realEstate.getAddress())
         })
     
     
@@ -80,7 +92,7 @@ describe('Escrow',() => {
 
         it('Updates Ownership', async() => {
     
-            expect(await realEstate.ownerOf(1)).to.be.equal(escrow.address)
+            expect(await realEstate.ownerOf(1)).to.be.equal(await escrow.getAddress())
     
         })
 
@@ -175,6 +187,7 @@ describe('Escrow',() => {
 
         beforeEach('setting prerequisites', async() => {
 
+           
             let inspectionStatus = await escrow.connect(inspector).approveInspectionStatus(1,true);
             await inspectionStatus.wait();
 
@@ -190,7 +203,7 @@ describe('Escrow',() => {
             let buyerShare = await escrow.connect(buyer).depositEscrowAmount (1, {value: tokens(25)});
             await buyerShare.wait();
 
-            await lender.sendTransaction({to: escrow.address, value: tokens(75)});
+            await lender.sendTransaction({to: await escrow.getAddress(), value: tokens(75)});
 
 
             let finalizeSale = await escrow.connect(seller).transferProperty(1);
@@ -227,13 +240,13 @@ describe('Escrow',() => {
         it('Buyer refunded after failed inspection',async() => {
             let inspection = await escrow.connect(inspector).approveInspectionStatus(1,false)
             await inspection.wait()
-            expect (await escrow.intiatePayment(1)).to.changeEtherBalances([escrow.address,buyer.address],[-25,25])
+            expect (await escrow.intiatePayment(1)).to.changeEtherBalances([await escrow.getAddress(),buyer.address],[-25,25])
         })
 
         it('Seller gets the escrow amount if the inspection is successful',async() => {
             let inspection = await escrow.connect(inspector).approveInspectionStatus(1,true)
             await inspection.wait()
-            expect (await escrow.intiatePayment(1)).to.changeEtherBalances([escrow.address,seller.address],[-25,25])
+            expect (await escrow.intiatePayment(1)).to.changeEtherBalances([await escrow.getAddress(),seller.address],[-25,25])
     
         })
     })
